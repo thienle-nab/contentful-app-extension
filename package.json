@@ -22,13 +22,9 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "next:dev": "next",
-    "next:build": "next build",
-    "start": "next start",
-    "preinstall": "[[ \"${BITBUCKET_COMMIT_REF}\" != \"feature/\"* ]]",
-    "dev": "next dev",
-    "build": "npm run"
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
   },
   "repository": {
     "type": "git",
