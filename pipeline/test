@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# shellcheck source=./lib/bash/core.sh
+source "${BASH_SOURCE[0]%/*}/../lib/bash/core.sh"
+
+function main() {
+
+  echo -e "${OK_COLOR}==> Testing app..."
+
+}
+
+main "$@"

@@ -1,0 +1,102 @@
+{
+  // Explorer
+  "explorer.confirmDragAndDrop": false,
+
+  // Editor - Format
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+
+  // Editor - Indentation
+  "editor.detectIndentation": true,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+
+  // Editor - Rulers
+  "editor.rulers": [120],
+
+  // Git
+  "git.autofetch": true,
+  "git.confirmSync": false,
+
+  // Git Diff Editor
+  "diffEditor.ignoreTrimWhitespace": false,
+
+  // Terminal
+  "terminal.integrated.scrollback": 1000000000,
+  "terminal.integrated.rendererType": "auto",
+
+  // Extensions
+  "extensions.ignoreRecommendations": false,
+
+  // Files
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/build/**": true,
+    "**/node_modules/**": true
+  },
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+
+  // VSIcons
+  "workbench.iconTheme": "vscode-icons",
+  "vsicons.projectDetection.autoReload": true,
+  "vsicons.dontShowNewVersionMessage": true,
+
+  // GitLens
+  "gitlens.views.repositories.files.layout": "auto",
+  "gitlens.views.fileHistory.enabled": true,
+  "gitlens.views.lineHistory.enabled": true,
+  "gitlens.advanced.messages": {
+    "suppressCommitHasNoPreviousCommitWarning": false,
+    "suppressCommitNotFoundWarning": false,
+    "suppressFileNotUnderSourceControlWarning": false,
+    "suppressGitVersionWarning": false,
+    "suppressLineUncommittedWarning": false,
+    "suppressNoRepositoryWarning": false,
+    "suppressResultsExplorerNotice": false,
+    "suppressShowKeyBindingsNotice": true,
+    "suppressUpdateNotice": true,
+    "suppressWelcomeNotice": true
+  },
+
+  // Shell
+  "shellcheck.useWorkspaceRootAsCwd": true,
+  "shellcheck.customArgs": [
+    //
+    "--external-sources"
+  ],
+
+  // YAML
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // JSON
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // MarkdownLint
+  "markdownlint.config": {
+    // Allow punctuation marks (?!) in headers
+    "MD026": false
+  },
+
+  // Run on Save
+  "runOnSave.commands": [
+    //
+  ],
+
+  // Editor - Code
+  "editor.tokenColorCustomizations": {
+    "semanticHighlighting": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  }
+}

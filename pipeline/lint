@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+# shellcheck source=./lib/bash/core.sh
+source "${BASH_SOURCE[0]%/*}/../lib/bash/core.sh"
+
+dependency "shellcheck"
+
+function main() {
+
+  echo -e "${OK_COLOR}==> Linting code..."
+
+  (
+    set -x
+    shellcheck \
+      --external-sources \
+      "./.bin/"* \
+      "./lib/bash/"* \
+      "./pipeline/"* ||
+      shellcheck \
+        "./.bin/"* \
+        "./lib/bash/"* \
+        "./pipeline/"*
+  )
+
+}
+
+main "$@"

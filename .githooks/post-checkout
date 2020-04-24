@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+export BOILERPLATE_NO_COLOR="true"
+
+# shellcheck source=./lib/bash/core.sh
+source "${BASH_SOURCE[0]%/*}/../lib/bash/core.sh"
+
+dependency "git-lfs"
+
+function main() {
+
+  # Git LFS
+  command -v git-lfs >/dev/null 2>&1 || {
+    echo >&2 "This repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting .git/hooks/post-checkout."
+    exit 2
+  }
+  git lfs post-checkout "$@"
+
+  local CURRENT_BRANCH
+  CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+
+  local JIRA_ISSUE_ID
+  JIRA_ISSUE_ID="$(
+    echo "${CURRENT_BRANCH}" |
+      sed -E "s|^.*/([A-Z0-9]+-[0-9]+)-.*$|\1|"
+  )"
+
+  local COMMIT_TEMPLATE_FILE="${PWD}/.git/commit_msg_template.txt"
+  if [[ -n "${JIRA_ISSUE_ID}" && "${JIRA_ISSUE_ID}" != "${CURRENT_BRANCH}" ]]; then
+    echo -n "${JIRA_ISSUE_ID} " >"${COMMIT_TEMPLATE_FILE}"
+  else
+    echo -n "JIRA-123 " >"${COMMIT_TEMPLATE_FILE}"
+  fi
+
+  (
+    set -x
+    git config commit.template "${COMMIT_TEMPLATE_FILE}"
+  )
+
+  cat "${COMMIT_TEMPLATE_FILE}"
+
+  # Update submodules
+  (
+    set -x
+    git submodule update \
+      --init \
+      --recursive ||
+      true
+  )
+
+  # Remove untracked submodules
+  (
+    set -x
+    git ls-files "${PWD}" --exclude-standard --others |
+      while IFS='' read -r UNTRACKED; do
+        if [[ -f "${UNTRACKED}/.git" ]]; then
+          (
+            set -x
+            rm -rf "${UNTRACKED}"
+          )
+        fi
+      done
+  )
+
+}
+
+main "$@"

@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+# shellcheck source=./lib/bash/core.sh
+source "${BASH_SOURCE[0]%/*}/../lib/bash/core.sh"
+
+function main() {
+
+  local COMMAND="${1:-}"
+
+  if [[ -n "${COMMAND}" && "${COMMAND}" != "-"* ]]; then
+    if ! command -v "${COMMAND}" >/dev/null; then
+      echo "Command '${COMMAND}' not found." >&2
+      exit 1
+    fi
+    shift
+  else
+    if [[ "${COMMAND}" == "--" ]]; then
+      shift
+    fi
+    COMMAND=""
+  fi
+
+  if [[ -z "${COMMAND}" ]]; then
+    COMMAND=(echo "Hello World")
+  fi
+
+  echo -e "${OK_COLOR}==> Debugging app..."
+
+  (
+    set -x
+    "${COMMAND[@]}" "$@"
+  )
+
+}
+
+main "$@"

@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+# shellcheck source=./lib/bash/core.sh
+source "${BASH_SOURCE[0]%/*}/../lib/bash/core.sh"
+
+dependency "bc"
+
+function main() {
+
+  local COMMAND="${1}"
+  shift
+
+  local CRON_END_DELAY_MS="${CRON_END_DELAY_MS:-300000}" # Default: 5 minute
+  local CRON_TIMEOUT_MS="${CRON_TIMEOUT_MS:-1800000}"    # Default: 30 minutes
+
+  local CRON_TASK_NOT_FOUND_EXIT_CODE=123
+  export CRON_TASK_NOT_FOUND_EXIT_CODE="${CRON_TASK_NOT_FOUND_EXIT_CODE}"
+
+  while true; do
+
+    echo
+    echo -e "${OK_COLOR}==> Starting job..."
+
+    BOILERPLATE_LOG_TIME="false" \
+      "${COMMAND}" "$@" &
+    local COMMAND_PID="$!"
+
+    local DURATION_MS=$((0))
+
+    while true; do
+
+      if kill -0 "${COMMAND_PID}" 2>/dev/null; then
+
+        if ((DURATION_MS >= CRON_TIMEOUT_MS)); then
+          echo
+          echo -e "${YELLOW_COLOR}Stopping due to timeout..."
+          (
+            set -x
+            kill "${COMMAND_PID}"
+          )
+          break
+        fi
+
+      else
+
+        break
+
+      fi
+
+      sleep 1s
+      DURATION_MS=$((DURATION_MS + 1000))
+
+    done
+
+    echo
+    echo -e "${YELLOW_COLOR}Stopped."
+
+    set +e
+    wait "${COMMAND_PID}"
+    local EXIT_CODE="$?"
+    set -e
+
+    if [[ "${EXIT_CODE}" != 0 && "${EXIT_CODE}" != "${CRON_TASK_NOT_FOUND_EXIT_CODE}" ]]; then
+      echo
+      echo "EXIT_CODE = ${EXIT_CODE}"
+      echo
+      return "${EXIT_CODE}"
+    fi
+
+    if [[ "${EXIT_CODE}" == "${CRON_TASK_NOT_FOUND_EXIT_CODE}" ]]; then
+
+      local CRON_END_DELAY_SECONDS
+      CRON_END_DELAY_SECONDS="$(echo "scale=2; ${CRON_END_DELAY_MS}/1000" | bc -l)"
+
+      echo
+      echo -e "${OK_COLOR}==> Delaying end for ${CRON_END_DELAY_SECONDS} seconds..."
+      sleep "${CRON_END_DELAY_SECONDS}"
+      echo
+
+    fi
+
+  done
+
+}
+
+main "$@"

@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# shellcheck source=./lib/bash/core.sh
+source "${BASH_SOURCE[0]%/*}/../lib/bash/core.sh"
+
+dependency "curl"
+
+function main() {
+
+  # See https://api.slack.com/docs/message-attachments for formatting.
+  local DATA="${1}"
+  shift
+
+  local SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/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}"
+
+  echo "Sending message to Slack..."
+
+  (
+    # set -x
+    curl \
+      --silent \
+      --show-error \
+      --request "POST" \
+      --header "Content-type: application/json" \
+      --data "${DATA}" \
+      "${SLACK_WEBHOOK_URL}"
+  )
+
+  echo
+
+}
+
+main "$@"

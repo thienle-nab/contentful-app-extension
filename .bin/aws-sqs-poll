@@ -1,0 +1,222 @@
+#!/usr/bin/env bash
+
+# shellcheck source=./lib/bash/core.sh
+source "${BASH_SOURCE[0]%/*}/../lib/bash/core.sh"
+
+dependency "aws"
+
+function main() {
+
+  local COMMAND="${1:-}"
+  if [[ -z "${COMMAND}" ]]; then
+    echo "Missing COMMAND" >&2
+    return 1
+  fi
+  shift
+
+  checkAWSCredentials
+
+  local SQS_INPUT_QUEUE_URL="${SQS_INPUT_QUEUE_URL:-}"
+  if [[ -z "${SQS_INPUT_QUEUE_URL}" ]]; then
+    echo "Missing SQS_INPUT_QUEUE_URL" >&2
+    return 1
+  fi
+
+  while true; do
+
+    echo -e "${OK_COLOR}==> Receiving messages..."
+
+    local MESSAGES
+
+    MESSAGES="$(
+      # set -x
+      aws sqs receive-message \
+        --queue-url "${SQS_INPUT_QUEUE_URL}" \
+        --max-number-of-messages 1 \
+        --wait-time-seconds 20 \
+        --message-attribute-names "All"
+    )"
+    # echo "MESSAGES = '${MESSAGES}'"
+
+    if [[ -z "${MESSAGES}" ]]; then
+      echo "No message received."
+      echo ""
+      continue
+    fi
+
+    local MESSAGE_FILE
+    MESSAGE_FILE="$(mktemp)"
+    echo "MESSAGE_FILE ='${MESSAGE_FILE}'"
+
+    echo "${MESSAGES}" | jq --raw-output ".Messages[0]" >"${MESSAGE_FILE}"
+
+    local MESSAGE_ID
+    MESSAGE_ID="$(jq --raw-output ".MessageId" "${MESSAGE_FILE}")"
+
+    local MESSAGE_BODY
+    MESSAGE_BODY="$(jq --raw-output --compact-output ".Body" "${MESSAGE_FILE}")"
+
+    local MESSAGE_ATTRIBUTES
+    MESSAGE_ATTRIBUTES="$(jq --raw-output --compact-output ".MessageAttributes" "${MESSAGE_FILE}")"
+
+    local RECEIPT_HANDLE
+    RECEIPT_HANDLE="$(jq -r ".ReceiptHandle" "${MESSAGE_FILE}")"
+    if [[ "${RECEIPT_HANDLE}" == "null" ]]; then echo "Missing RECEIPT_HANDLE" >&2 && return 1; fi
+    # echo "RECEIPT_HANDLE ='${RECEIPT_HANDLE}'"
+
+    local VISIBILITY_TIMEOUT_SECONDS
+    VISIBILITY_TIMEOUT_SECONDS="$(
+      aws sqs get-queue-attributes \
+        --queue-url "${SQS_INPUT_QUEUE_URL}" \
+        --attribute-names "VisibilityTimeout" |
+        jq -r ".Attributes.VisibilityTimeout"
+    )"
+    # echo "VISIBILITY_TIMEOUT_SECONDS ='${VISIBILITY_TIMEOUT_SECONDS}'"
+
+    (
+      local DATA
+      DATA="$(
+        echo '{}' |
+          jq \
+            --compact-output \
+            --arg messageID "${MESSAGE_ID}" \
+            --arg messageBody "${MESSAGE_BODY}" \
+            --arg messageAttributes "${MESSAGE_ATTRIBUTES}" \
+            '.main = {
+              "attachments": [
+                {
+                  "fallback": "Message \($messageID) received",
+                  "color": "#888888",
+                  "text": "Message *`\($messageID)`* received.\n\n*Message Body*\n```\($messageBody)```\n\n*Message Attributes*\n```\($messageAttributes)```",
+                }
+              ]
+            } | .main'
+      )"
+      # echo "DATA = '${DATA}'"
+      # set -x
+      slack-send "${DATA}"
+    )
+
+    local LOG_FILE
+    LOG_FILE="$(mktemp)"
+
+    (
+      set -x
+      time \
+        "${COMMAND}" "$@" "${MESSAGE_FILE}" 2>&1 |
+        tee "${LOG_FILE}"
+    ) &
+    local COMMAND_PID="$!"
+
+    local DURATION_SECONDS=$((0))
+    while true; do
+      if kill -0 "${COMMAND_PID}" 2>/dev/null; then
+        # Running
+        if ((DURATION_SECONDS >= VISIBILITY_TIMEOUT_SECONDS - 5)); then
+          # Go by 30s steps
+          VISIBILITY_TIMEOUT_SECONDS=30
+          (
+            set -x
+            aws sqs change-message-visibility \
+              --queue-url "${SQS_INPUT_QUEUE_URL}" \
+              --receipt-handle "${RECEIPT_HANDLE}" \
+              --visibility-timeout "${VISIBILITY_TIMEOUT_SECONDS}" ||
+              true
+          )
+          DURATION_SECONDS=0
+        fi
+      else
+        # Stop
+        break
+      fi
+      sleep 1s
+      DURATION_SECONDS=$((DURATION_SECONDS + 1))
+    done
+
+    set +e
+    wait "${COMMAND_PID}"
+    local EXIT_CODE="$?"
+    set -e
+
+    (
+      set -x
+      rm -rf "${MESSAGE_FILE}" || true
+    )
+
+    if [[ "${EXIT_CODE}" != 0 ]]; then
+
+      echo
+      echo "EXIT_CODE = ${EXIT_CODE}"
+      echo
+
+      (
+        local DATA
+        DATA="$(
+          echo '{}' |
+            jq \
+              --compact-output \
+              --arg messageID "${MESSAGE_ID}" \
+              --arg messageBody "${MESSAGE_BODY}" \
+              --arg messageAttributes "${MESSAGE_ATTRIBUTES}" \
+              --arg exitCode "${EXIT_CODE}" \
+              --arg consoleLog "$(tail -80 <"${LOG_FILE}")" \
+              '.main = {
+                "attachments": [
+                  {
+                    "fallback": "<!channel> Message \($messageID) failed",
+                    "color": "danger",
+                    "text": " <!channel> Message *`\($messageID)`* failed.\n\n*Message Body*\n```\($messageBody)```\n\n*Message Attributes*\n```\($messageAttributes)```\n\n*Exit Code*\n```\($exitCode)```\n\n*Console Log*\n```\($consoleLog)```",
+                  }
+                ]
+              } | .main'
+        )"
+        # echo "DATA = '${DATA}'"
+        # set -x
+        slack-send "${DATA}"
+      )
+
+      rm -rf "${LOG_FILE}"
+
+      continue
+    fi
+
+    (
+      set -x
+      aws sqs delete-message \
+        --queue-url "${SQS_INPUT_QUEUE_URL}" \
+        --receipt-handle "${RECEIPT_HANDLE}"
+    )
+
+    (
+      local DATA
+      DATA="$(
+        echo '{}' |
+          jq \
+            --compact-output \
+            --arg messageID "${MESSAGE_ID}" \
+            --arg messageBody "${MESSAGE_BODY}" \
+            --arg messageAttributes "${MESSAGE_ATTRIBUTES}" \
+            --arg exitCode "${EXIT_CODE}" \
+            --arg consoleLog "$(tail -80 <"${LOG_FILE}")" \
+            '.main = {
+              "attachments": [
+                {
+                  "fallback": "Message \($messageID) succeeded",
+                  "color": "good",
+                  "text": "Message *`\($messageID)`* succeeded.\n\n*Message Body*\n```\($messageBody)```\n\n*Message Attributes*\n```\($messageAttributes)```\n\n*Exit Code*\n```\($exitCode)```*Console Log*\n```\($consoleLog)```",
+                }
+              ]
+            } | .main'
+      )"
+      # echo "DATA = '${DATA}'"
+      # set -x
+      slack-send "${DATA}"
+    )
+
+    rm -rf "${LOG_FILE}"
+
+  done
+
+}
+
+main "$@"

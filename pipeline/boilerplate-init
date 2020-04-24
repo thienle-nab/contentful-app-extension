@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# shellcheck source=./lib/bash/core.sh
+source "${BASH_SOURCE[0]%/*}/../lib/bash/core.sh"
+
+function main() {
+
+  echo -e "${OK_COLOR}==> Initializing boilerplate..."
+
+  "${BASH_SOURCE[0]%/*}/boilerplate-upgrade"
+
+  (
+    set -x
+    git add --all
+    git commit --message "Setup project"
+  )
+
+}
+
+main "$@"

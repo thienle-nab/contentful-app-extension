@@ -1,0 +1,15 @@
+# Common
+.env
+.env.*
+build/
+
+# Node js modules
+node_modules
+
+# Next build cache
+.next
+
+# Localized Generated Folder
+src/pages/jp
+src/pages/kr
+src/pages/cn

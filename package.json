@@ -1,0 +1,41 @@
+{
+  "name": "inkr-web-app",
+  "version": "1.0.0",
+  "description": "(Short description for this project)",
+  "main": ".prettierrc.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {
+    "@types/classnames": "^2.2.10",
+    "@types/node": "^13.11.0",
+    "@types/react": "^16.9.32",
+    "@zeit/next-css": "^1.0.1",
+    "@zeit/next-sass": "^1.0.1",
+    "babel-plugin-inline-react-svg": "^1.1.1",
+    "next": "^9.3.4",
+    "node-sass": "^4.13.1",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "sass": "^1.26.3",
+    "typescript": "^3.8.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "next:dev": "next",
+    "next:build": "next build",
+    "start": "next start",
+    "preinstall": "[[ \"${BITBUCKET_COMMIT_REF}\" != \"feature/\"* ]]",
+    "dev": "next dev",
+    "build": "npm run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@bitbucket.org/nabstudio/inkr-web-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "homepage": "https://bitbucket.org/nabstudio/inkr-web-app#readme"
+}
